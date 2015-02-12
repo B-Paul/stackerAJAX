@@ -6,6 +6,11 @@ $(document).ready( function() {
 		var tags = $(this).find("input[name='tags']").val();
 		getUnanswered(tags);
 	});
+  $('.inspiration-getter').submit(function (event) {
+    $('.results').html('');
+    var tag = $(this).find('input[name="answerers"]').val();
+    getTopAnswerers(tag);
+  });
 });
 
 // this function takes the question object returned by StackOverflow 
@@ -41,19 +46,39 @@ var showQuestion = function(question) {
 	return result;
 };
 
+var showUser = function (userScore) {
+  var result = $('.templates .user-score').clone();
+  result.find('.user-avatar')
+    .attr('src', userScore.user.profile_image)
+    .after(userScore.user.display_name)
+    .parent()
+      .attr('href', userScore.user.link);
+  result.find('.reputation')
+      .text(userScore.user.reputation);
+  result.find('.post-count')
+      .text(userScore.post_count);
+  result.find('.accept-rate')
+      .text(userScore.user.accept_rate);
+
+  return result;
+};
 
 // this function takes the results object from StackOverflow
 // and creates info about search results to be appended to DOM
 var showSearchResults = function(query, resultNum) {
-	var results = resultNum + ' results for <strong>' + query;
+	var results = resultNum + ' results for <strong>' + query + '</strong>';
 	return results;
+};
+
+var showAnsResults = function (tag) {
+  return 'Top answerers for ' + tag;
 };
 
 // takes error string and turns it into displayable DOM element
 var showError = function(error){
 	var errorElem = $('.templates .error').clone();
 	var errorText = '<p>' + error + '</p>';
-	errorElem.append(errorText);
+	return errorElem.append(errorText);
 };
 
 // takes a string of semi-colon separated tags to be searched
@@ -82,11 +107,37 @@ var getUnanswered = function(tags) {
 			$('.results').append(question);
 		});
 	})
-	.fail(function(jqXHR, error, errorThrown){
-		var errorElem = showError(error);
-		$('.search-results').append(errorElem);
+	.fail(function(jqXHR, error){
+		outputError(error);
 	});
 };
 
+var getTopAnswerers = function (tag) {
+  var url = 'http://api.stackexchange.com/2.2/tags/' + tag + '/top-answerers/all_time'
+  var ajax    = {url: url,
+                data: {site: 'stackoverflow'},
+                dataType: 'jsonp',
+                type: 'GET'};
+  console.log(tag);
+  console.log(url);
+  $.ajax(ajax)
+    .done(function (result) {
+      var ansResults = showAnsResults(tag);
 
+      $('.search-results').html(ansResults);
+
+      $.each(result.items, function (i, item) {
+        var user = showUser(item);
+        $('.results').append(user);
+      });
+    })
+    .fail(function (jqXHR, error) {
+      outputError(error);
+    });
+};
+
+var outputError = function (error) {
+  var errorElem = showError(error);
+  $('.search-results').append(errorElem);
+};
 
